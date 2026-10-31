@@ -44,4 +44,4 @@ const getDB = () => {
   return db;
 };
 
-export { connectDB, getDB };
+export { connectDB, getDB, client };
