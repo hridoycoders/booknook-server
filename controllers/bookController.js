@@ -14,6 +14,7 @@ const getAllBooks = async (req, res) => {
 
     res.status(200).json(books);
   } catch (error) {
+    console.error("Get Books Error:", error);
     res.status(500).json({ message: "Failed to fetch books" });
   }
 };
@@ -39,8 +40,174 @@ const getBookById = async (req, res) => {
 
     res.status(200).json(book);
   } catch (error) {
+    console.error("Get Book Error:", error);
     res.status(500).json({ message: "Failed to fetch book" });
   }
 };
 
-export { getAllBooks, getBookById };
+// POST /books - Add a new book
+const addBook = async (req, res) => {
+  try {
+    const { title, author, category, image, description } = req.body || {};
+
+    if (
+      !title?.trim() ||
+      !author?.trim() ||
+      !category ||
+      !image?.trim() ||
+      !description?.trim()
+    ) {
+      return res.status(400).json({
+        message: "Please provide all required book information",
+      });
+    }
+
+    const allowedCategories = [
+      "Fiction",
+      "Science",
+      "History",
+      "Kids",
+      "Others",
+    ];
+
+    if (!allowedCategories.includes(category)) {
+      return res.status(400).json({
+        message: "Invalid book category",
+      });
+    }
+
+    if (!req.user?.email) {
+      return res.status(401).json({
+        message: "User information missing from token",
+      });
+    }
+
+    const newBook = {
+      title: title.trim(),
+      author: author.trim(),
+      category,
+      image: image.trim(),
+      description: description.trim(),
+      userName: req.user.name || req.user.email,
+      userEmail: req.user.email,
+      createdAt: new Date(),
+    };
+
+    const db = getDB();
+    const result = await db.collection("books").insertOne(newBook);
+
+    res.status(201).json({
+      message: "Book added successfully",
+      insertedId: result.insertedId,
+    });
+  } catch (error) {
+    console.error("Add Book Error:", error);
+    res.status(500).json({ message: "Failed to add book" });
+  }
+};
+
+// PATCH /books/:id - Update a book
+const updateBook = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book ID" });
+    }
+
+    if (!req.user?.email) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    const { title, author, category, image, description } = req.body || {};
+
+    const allowedCategories = [
+      "Fiction",
+      "Science",
+      "History",
+      "Kids",
+      "Others",
+    ];
+
+    if (
+      !title?.trim() ||
+      !author?.trim() ||
+      !category ||
+      !image?.trim() ||
+      !description?.trim()
+    ) {
+      return res.status(400).json({
+        message: "Please provide all required book information",
+      });
+    }
+
+    if (!allowedCategories.includes(category)) {
+      return res.status(400).json({ message: "Invalid book category" });
+    }
+
+    const db = getDB();
+
+    const result = await db.collection("books").updateOne(
+      {
+        _id: new ObjectId(id),
+        userEmail: req.user.email,
+      },
+      {
+        $set: {
+          title: title.trim(),
+          author: author.trim(),
+          category,
+          image: image.trim(),
+          description: description.trim(),
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        message: "Book not found or you are not the owner",
+      });
+    }
+
+    res.status(200).json({ message: "Book updated successfully" });
+  } catch (error) {
+    console.error("Update Book Error:", error);
+    res.status(500).json({ message: "Failed to update book" });
+  }
+};
+
+// DELETE /books/:id - Delete a book
+const deleteBook = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book ID" });
+    }
+
+    if (!req.user?.email) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    const db = getDB();
+
+    const result = await db.collection("books").deleteOne({
+      _id: new ObjectId(id),
+      userEmail: req.user.email,
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        message: "Book not found or you are not the owner",
+      });
+    }
+
+    res.status(200).json({ message: "Book deleted successfully" });
+  } catch (error) {
+    console.error("Delete Book Error:", error);
+    res.status(500).json({ message: "Failed to delete book" });
+  }
+};
+
+export { getAllBooks, getBookById, addBook, updateBook, deleteBook };
