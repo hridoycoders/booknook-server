@@ -53,6 +53,35 @@ const getBookById = async (req, res) => {
   }
 };
 
+// GET /books/my-books - Get books added by logged-in user
+const getMyBooks = async (req, res) => {
+  try {
+    if (!req.user?.email) {
+      return res.status(401).json({
+        message: "Unauthorized access",
+      });
+    }
+
+    const db = getDB();
+
+    const books = await db
+      .collection("books")
+      .find({
+        userEmail: req.user.email,
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.status(200).json(books);
+  } catch (error) {
+    console.error("Get My Books Error:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch your books",
+    });
+  }
+};
+
 // POST /books - Add a new book
 const addBook = async (req, res) => {
   try {
@@ -292,4 +321,11 @@ const deleteBook = async (req, res) => {
   }
 };
 
-export { getAllBooks, getBookById, addBook, updateBook, deleteBook };
+export {
+  getAllBooks,
+  getBookById,
+  getMyBooks,
+  addBook,
+  updateBook,
+  deleteBook,
+};
