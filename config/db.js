@@ -4,9 +4,14 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 dotenv.config();
 
 const uri = process.env.MONGODB_URI;
+const dbName = process.env.DB_NAME;
 
 if (!uri) {
-  throw new Error("MONGODB_URI is missing in .env file");
+  throw new Error("MONGODB_URI is missing");
+}
+
+if (!dbName) {
+  throw new Error("DB_NAME is missing");
 }
 
 const client = new MongoClient(uri, {
@@ -18,22 +23,34 @@ const client = new MongoClient(uri, {
 });
 
 let db;
+let connectionPromise;
 
 const connectDB = async () => {
-  try {
-    await client.connect();
+  if (db) return db;
 
-    db = client.db(process.env.DB_NAME);
+  if (!connectionPromise) {
+    connectionPromise = (async () => {
+      try {
+        await client.connect();
 
-    await db.command({ ping: 1 });
+        const database = client.db(dbName);
 
-    console.log("MongoDB Connected Successfully!");
+        await database.command({ ping: 1 });
 
-    return db;
-  } catch (error) {
-    console.error("MongoDB Connection Failed:", error.message);
-    throw error;
+        db = database;
+
+        console.log("MongoDB Connected Successfully!");
+
+        return db;
+      } catch (error) {
+        connectionPromise = null;
+        console.error("MongoDB Connection Failed:", error.message);
+        throw error;
+      }
+    })();
   }
+
+  return connectionPromise;
 };
 
 const getDB = () => {
